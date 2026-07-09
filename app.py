@@ -3,7 +3,7 @@ Hyper-Inference Router — AMD Developer Hackathon: ACT II submission
 =====================================================================
 A cost/latency-aware task router that sends each request to the
 cheapest Fireworks AI model capable of handling it well, with Gemma 4
-26B A4B IT (Google DeepMind) as the dedicated reasoning/creative engine
+E4B (Google DeepMind) as the dedicated reasoning/creative engine
 running on AMD Instinct MI300X hardware.
 
 Task taxonomy:
@@ -60,19 +60,19 @@ MODEL_REGISTRY = {
     },
     "creative": {
         "id": GEMMA4_DEPLOYMENT_ID,
-        "display": "Gemma 4 26B A4B IT (AMD MI300X, dedicated)",
+        "display": "Gemma 4 E4B (AMD MI300X, dedicated)",
         "max_tokens": 2048,
         "temperature": 0.85,
-        "cost_per_1k": 0.00045,
-        "reason": "Google DeepMind's Gemma 4 MoE model for creative writing, marketing copy, storytelling.",
+        "cost_per_1k": 0.00025,
+        "reason": "Google DeepMind's Gemma 4 model for creative writing, marketing copy, storytelling.",
     },
     "reasoning": {
         "id": GEMMA4_DEPLOYMENT_ID,
-        "display": "Gemma 4 26B A4B IT (AMD MI300X, dedicated)",
+        "display": "Gemma 4 E4B (AMD MI300X, dedicated)",
         "max_tokens": 4096,
         "temperature": 0.5,
-        "cost_per_1k": 0.00045,
-        "reason": "Gemma 4's MoE reasoning path for structured analysis, proposals, and strategy.",
+        "cost_per_1k": 0.00025,
+        "reason": "Gemma 4's reasoning path for structured analysis, proposals, and strategy.",
     },
     "code": {
         "id": "accounts/fireworks/models/kimi-k2p7-code",
@@ -256,7 +256,7 @@ class RouteRequest(BaseModel):
 app = FastAPI(
     title="Hyper-Inference Router",
     description="Cost-aware task routing across AMD MI300X-hosted models via Fireworks AI, "
-                "featuring Gemma 4 26B A4B IT for reasoning and creative tasks.",
+                "featuring Gemma 4 E4B for reasoning and creative tasks.",
     version="1.0.0",
 )
 

@@ -21,8 +21,8 @@ proposal" request that needed real reasoning to be worth the user's time.
 
 **Hyper-Inference Router solves this by routing, not picking.** It looks
 at what a request actually needs and sends it to the right model for that
-specific job — a fast, cheap model for simple requests, and **Gemma 4 26B
-A4B IT** (Google DeepMind), running on a dedicated **AMD Instinct MI300X**
+specific job — a fast, cheap model for simple requests, and **Gemma 4 E4B**
+(Google DeepMind), running on a dedicated **AMD Instinct MI300X**
 deployment via Fireworks AI, for the requests that need real reasoning or
 creative quality.
 
@@ -52,8 +52,8 @@ model actually suited for it:
 | Task type | Model | Why |
 |---|---|---|
 | `casual` | DeepSeek V4 Flash (serverless, AMD MI300X) | Ultra-low latency and near-zero cost for greetings and simple queries — a large model here is wasted spend |
-| `creative` | **Gemma 4 26B A4B IT** (dedicated, AMD MI300X) | MoE architecture gives strong creative-writing quality at a fraction of the active-parameter cost of a dense model of similar capability |
-| `reasoning` | **Gemma 4 26B A4B IT** (dedicated, AMD MI300X) | Same model, used for structured analysis, proposals, and strategy — the class of request where quality actually matters to the end user |
+| `creative` | **Gemma 4 E4B** (dedicated, AMD MI300X) | Compact multimodal model, cheap enough to run dedicated for creative writing, marketing copy, and storytelling |
+| `reasoning` | **Gemma 4 E4B** (dedicated, AMD MI300X) | Same model, used for structured analysis, proposals, and strategy — the class of request where quality actually matters to the end user |
 | `code` | Kimi K2 Code (serverless, AMD MI300X) | Code-specialized model for technical docs and explanations |
 
 Classification is a zero-cost weighted keyword match (see `classify_task()`
@@ -61,19 +61,28 @@ in `app.py`) — no extra LLM call is spent just deciding where to route,
 which matters because a routing layer that itself costs money on every
 request defeats its own purpose.
 
-## Why Gemma 4 on a dedicated AMD MI300X deployment
+## Why Gemma 4 E4B on a dedicated AMD MI300X deployment
 
-Gemma 4 26B A4B IT is a Mixture-of-Experts model: 25.2B total parameters,
-only ~3.8B active per forward pass. That architecture is exactly why it's
-the right fit for the reasoning/creative tier — it delivers large-model
-reasoning quality without large-model active-compute cost per token.
+Gemma 4 E4B is a compact multimodal model: 8B total / ~4.5B effective
+parameters, small enough to run as a dedicated deployment at meaningfully
+lower GPU-hour cost than larger Gemma 4 variants, while still giving a
+real quality step up over the cheapest serverless models for tasks that
+need actual reasoning.
 
 Running it on a **dedicated** Fireworks deployment (rather than shared
-serverless) gives predictable latency and no per-request rate limits once
-warm, at the honest tradeoff of GPU-hour billing while the deployment is
-active and a cold-start delay after idle periods. The router's `/api/stats`
-endpoint tracks real latency, token usage, and cost on every call — so that
-tradeoff is measured live, not asserted in a slide.
+serverless, which isn't offered for this model family) gives predictable
+latency and no per-request rate limits once warm, at the honest tradeoff
+of GPU-hour billing while the deployment is active and a cold-start delay
+after idle periods. The router's `/api/stats` endpoint tracks real
+latency, token usage, and cost on every call — so that tradeoff is
+measured live, not asserted in a slide.
+
+**Note on cost figures:** dedicated deployments bill by GPU-hour, not
+per-token, so the `cost_per_1k` value used to compute "savings vs GPT-4o"
+in this demo is a reasonable estimate for illustrating the routing
+concept, not an exact per-token invoice line item. Latency and token
+counts shown are always real, measured values from the actual API
+response.
 
 ## Live proof, not a claim
 
@@ -102,7 +111,7 @@ Client (browser demo UI or any HTTP client)
    Fireworks AI Chat Completions API
         |
         +--> casual/code         -> serverless models (pay-per-token)
-        +--> creative/reasoning  -> Gemma 4 26B A4B IT (dedicated AMD MI300X deployment)
+        +--> creative/reasoning  -> Gemma 4 E4B (dedicated AMD MI300X deployment)
 ```
 
 ## Running it
@@ -110,7 +119,8 @@ Client (browser demo UI or any HTTP client)
 ### 1. Get API access
 
 - Sign up for the [AMD AI Developer Program](https://www.amd.com/en/developer/resources/ai-developer-program.html) to get $50 in Fireworks AI credits.
-- In the [Fireworks dashboard](https://fireworks.ai), create an **on-demand deployment** of `Gemma 4 26B A4B IT` (Deployments -> New Deployment). Copy the resulting deployment ID — it looks like `accounts/<your-account>/deployments/<id>`.
+- In the [Fireworks dashboard](https://fireworks.ai), create an **on-demand deployment** of `Gemma 4 E4B` (Deployments -> New Deployment) — the cheapest Gemma 4 variant, recommended to conserve credits. Copy the resulting deployment ID — it looks like `accounts/<your-account>/deployments/<id>`.
+- **Undeploy (scale to zero or delete) whenever you're not actively testing** — dedicated deployments bill by GPU-hour even while idle.
 
 ### 2. Configure
 
@@ -154,7 +164,7 @@ Response:
 {
   "text": "...",
   "model": "accounts/.../deployments/...",
-  "model_display": "Gemma 4 26B A4B IT (AMD MI300X, dedicated)",
+  "model_display": "Gemma 4 E4B (AMD MI300X, dedicated)",
   "task_type": "reasoning",
   "latency_ms": 1830,
   "tokens_used": 214,
