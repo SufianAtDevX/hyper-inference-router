@@ -153,6 +153,13 @@ def call_fireworks(prompt: str, task_type: str, system_prompt: str = "") -> dict
         tokens_used = usage.get("total_tokens", 0)
         cost_usd = round(tokens_used * cfg["cost_per_1k"] / 1000, 6)
 
+        # GPT-4o flat pricing for comparison ($5/1M input+output blended est.)
+        gpt4_equivalent_cost = round(tokens_used * 0.005 / 1000, 6)
+        savings_pct = (
+            round((1 - cost_usd / gpt4_equivalent_cost) * 100, 1)
+            if gpt4_equivalent_cost > 0 else 0
+        )
+
         return {
             "text": text,
             "model": model_id,
@@ -162,6 +169,8 @@ def call_fireworks(prompt: str, task_type: str, system_prompt: str = "") -> dict
             "latency_ms": latency_ms,
             "tokens_used": tokens_used,
             "cost_usd": cost_usd,
+            "gpt4_equivalent_cost_usd": gpt4_equivalent_cost,
+            "savings_vs_gpt4_pct": savings_pct,
             "error": None,
         }
     except requests.exceptions.Timeout:

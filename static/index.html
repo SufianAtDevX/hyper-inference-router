@@ -92,8 +92,11 @@ async function route() {
     } else {
       document.getElementById('modelBadge').textContent = data.model_display;
       document.getElementById('output').textContent = data.text;
+      const savingsText = data.savings_vs_gpt4_pct > 0
+        ? ` · ${data.savings_vs_gpt4_pct}% cheaper than GPT-4o`
+        : '';
       document.getElementById('meta').textContent =
-        `Task: ${data.task_type} · Latency: ${data.latency_ms}ms · Tokens: ${data.tokens_used} · Cost: $${data.cost_usd}`;
+        `Task: ${data.task_type} · Latency: ${data.latency_ms}ms · Tokens: ${data.tokens_used} · Cost: $${data.cost_usd}${savingsText}`;
     }
     resultEl.classList.add('show');
   } catch (e) {
