@@ -84,48 +84,86 @@ MODEL_REGISTRY = {
     },
 }
 
-# Keywords are weighted: strong, unambiguous signals score higher than
-# generic terms that appear across multiple contexts (e.g. "api" alone is
-# too weak a signal for "code" -- it shows up constantly in business/
-# proposal prompts like "healthcare API project" that are really
-# reasoning tasks, not programming tasks).
-TASK_KEYWORDS = {
-    "casual": {
-        "hello": 2, "hi": 2, "hey": 2, "thanks": 2, "thank you": 2,
-        "goodbye": 2, "bye": 2, "how are you": 2,
-    },
-    "code": {
-        "function": 2, "debug": 2, "script": 2, "algorithm": 2,
-        "python": 2, "javascript": 2, "code snippet": 3, "stack trace": 3,
-        "refactor": 2, "unit test": 2, "endpoint": 1, "api": 1,
-    },
-    "reasoning": {
-        "proposal": 3, "business plan": 3, "strategy": 2, "analyze": 2,
-        "evaluate": 2, "recommend": 2, "compare": 2, "decision": 2,
-        "plan": 1, "roadmap": 2, "report": 2, "budget": 2, "bidding": 2,
-    },
-    "creative": {
-        "caption": 3, "post": 1, "story": 2, "blog": 2, "marketing": 3,
-        "campaign": 2, "copy": 1, "creative": 2,
-    },
+# Classification strategy: check STRONG, UNAMBIGUOUS INTENT PHRASES first,
+# in priority order, with an early return the moment one matches. This
+# avoids the failure mode of pure keyword-scoring, where a tie between two
+# categories gets silently broken by dict/iteration order rather than by
+# what the prompt actually means (e.g. "proposal for a healthcare API
+# platform" mentions both business and tech terms -- scoring can tie, but
+# intent phrases like "write a proposal" are never ambiguous).
+#
+# Only if NO strong phrase matches do we fall back to light keyword
+# scoring, and even then "reasoning" wins ties over "code" by default,
+# since business/reasoning requests are the common case for this router
+# and a request needs POSITIVE evidence of being a coding task, not just
+# the incidental presence of a tech noun like "api" or "platform".
+
+STRONG_REASONING_PHRASES = [
+    "proposal", "business plan", "bidding on", "bidding for",
+    "cover letter", "pitch deck", "executive summary", "swot analysis",
+    "write a strategy", "market analysis", "budget report",
+]
+STRONG_CREATIVE_PHRASES = [
+    "write a caption", "social media post", "write a story",
+    "write a blog", "marketing copy", "ad campaign", "write a poem",
+    "write a song", "write a script for a video",
+]
+STRONG_CASUAL_PHRASES = [
+    "hello", "hi there", "hey there", "thanks for", "thank you",
+    "goodbye", "how are you",
+]
+# Code intent requires an action verb NEAR a code noun -- "api" or
+# "platform" alone never qualifies, since those words appear constantly
+# in non-technical business prompts too.
+CODE_ACTION_VERBS = ["write", "debug", "fix", "explain", "refactor", "optimize", "review"]
+CODE_NOUNS = ["code", "function", "script", "bug", "algorithm", "class", "regex", "sql query", "unit test", "stack trace"]
+
+# Light fallback keyword weights, used only when no strong phrase above matched.
+FALLBACK_KEYWORDS = {
+    "code": {"python": 1, "javascript": 1, "endpoint": 1, "api": 1},
+    "reasoning": {"strategy": 2, "analyze": 2, "evaluate": 2, "recommend": 2,
+                  "compare": 2, "decision": 2, "plan": 1, "roadmap": 2, "report": 1},
+    "creative": {"caption": 2, "post": 1, "story": 1, "blog": 1, "campaign": 1, "copy": 1},
 }
 
 
 def classify_task(prompt: str, hint: Optional[str] = None) -> str:
-    """Classify a prompt into casual | creative | reasoning | code via
-    weighted keyword match. Strong, unambiguous keywords (e.g. "proposal",
-    "business plan") outweigh generic ones (e.g. "api") so common business
-    language doesn't get misrouted to the code path."""
+    """Classify a prompt into casual | creative | reasoning | code.
+
+    Checks strong, unambiguous intent phrases first (in priority order:
+    casual > reasoning > creative > code-with-verb), returning immediately
+    on a match. Only falls back to light keyword scoring if nothing strong
+    matched, and that fallback favors "reasoning" over "code" on a tie,
+    since a bare technical noun (e.g. "api") is weak evidence of a coding
+    request compared to how often it appears in business prompts.
+    """
     if hint and hint in MODEL_REGISTRY:
         return hint
+
     lower = prompt.lower()[:500]
-    scores = {task: 0 for task in TASK_KEYWORDS}
-    for task, keywords in TASK_KEYWORDS.items():
+
+    if any(p in lower for p in STRONG_CASUAL_PHRASES) and len(lower) < 60:
+        return "casual"
+    if any(p in lower for p in STRONG_REASONING_PHRASES):
+        return "reasoning"
+    if any(p in lower for p in STRONG_CREATIVE_PHRASES):
+        return "creative"
+    if any(verb in lower for verb in CODE_ACTION_VERBS) and any(noun in lower for noun in CODE_NOUNS):
+        return "code"
+
+    scores = {task: 0 for task in FALLBACK_KEYWORDS}
+    for task, keywords in FALLBACK_KEYWORDS.items():
         for kw, weight in keywords.items():
             if kw in lower:
                 scores[task] += weight
-    best = max(scores, key=scores.get)
-    return best if scores[best] > 0 else "reasoning"
+
+    if max(scores.values()) == 0:
+        return "reasoning"
+    # Explicit priority on ties: reasoning beats creative beats code.
+    for task in ("reasoning", "creative", "code"):
+        if scores[task] == max(scores.values()):
+            return task
+    return "reasoning"
 
 
 def call_fireworks(prompt: str, task_type: str, system_prompt: str = "") -> dict:
