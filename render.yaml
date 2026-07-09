@@ -1,0 +1,12 @@
+services:
+  - type: web
+    name: hyper-inference-router
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    envVars:
+      - key: FIREWORKS_API_KEY
+        sync: false
+      - key: GEMMA4_DEPLOYMENT_ID
+        sync: false
+    healthCheckPath: /api/health
