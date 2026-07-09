@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>Hyper-Inference Router — AMD Hackathon Demo</title>
+<title>Hyper-Inference Router — Stop Overpaying for AI</title>
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <style>
   :root { color-scheme: dark; }
@@ -13,11 +13,12 @@
     display: flex; align-items: center; justify-content: center; padding: 24px;
   }
   .card {
-    max-width: 720px; width: 100%; background: #14141a; border: 1px solid #26262e;
+    max-width: 760px; width: 100%; background: #14141a; border: 1px solid #26262e;
     border-radius: 16px; padding: 32px;
   }
-  h1 { font-size: 1.5rem; margin: 0 0 4px; }
-  .subtitle { color: #9a9aa5; font-size: 0.9rem; margin-bottom: 24px; }
+  h1 { font-size: 1.6rem; margin: 0 0 6px; line-height: 1.3; }
+  .subtitle { color: #9a9aa5; font-size: 0.9rem; margin-bottom: 24px; line-height: 1.5; }
+  .subtitle strong { color: #22d3ee; }
   label { display: block; font-size: 0.85rem; color: #b5b5bd; margin: 16px 0 6px; }
   textarea, select {
     width: 100%; background: #1c1c24; border: 1px solid #33333d; border-radius: 8px;
@@ -30,20 +31,58 @@
     font-size: 0.95rem; cursor: pointer;
   }
   button:disabled { opacity: 0.5; cursor: not-allowed; }
-  .result { margin-top: 24px; padding: 16px; background: #1c1c24; border-radius: 10px;
-    border: 1px solid #33333d; display: none; }
+  .result { margin-top: 24px; display: none; }
   .result.show { display: block; }
+
+  /* Route Rationale - the "brain reveal" */
+  .rationale {
+    display: flex; align-items: flex-start; gap: 10px;
+    background: rgba(6,182,212,0.06); border: 1px solid rgba(6,182,212,0.2);
+    border-radius: 10px; padding: 12px 14px; margin-bottom: 16px;
+    font-size: 0.82rem; color: #b5b5bd; line-height: 1.5;
+  }
+  .rationale .icon { font-size: 1.1rem; flex-shrink: 0; margin-top: -1px; }
+  .rationale strong { color: #e5e5e8; }
+
+  /* Proof Dashboard - the killer proof point */
+  .proof-dashboard {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px;
+  }
+  .stat-card {
+    background: #1c1c24; border: 1px solid #33333d; border-radius: 10px;
+    padding: 12px 10px; text-align: center;
+  }
+  .stat-card .stat-label { font-size: 0.68rem; color: #83838f; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 4px; }
+  .stat-card .stat-value { font-size: 1.15rem; font-weight: 700; color: #e5e5e8; }
+
+  .savings-hero {
+    background: linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.08));
+    border: 1px solid rgba(16,185,129,0.35); border-radius: 12px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .savings-hero .savings-top { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .savings-hero .savings-label { font-size: 0.78rem; color: #9a9aa5; }
+  .savings-hero .savings-pct { font-size: 1.8rem; font-weight: 800; color: #34d399; line-height: 1; }
+  .savings-bar-track { height: 8px; background: #26262e; border-radius: 999px; overflow: hidden; }
+  .savings-bar-fill { height: 100%; background: linear-gradient(90deg, #06b6d4, #34d399); border-radius: 999px;
+    width: 0%; transition: width 0.7s ease-out; }
+  .savings-hero .savings-caption { font-size: 0.72rem; color: #83838f; margin-top: 6px; }
+
   .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.75rem;
     background: rgba(6,182,212,0.15); color: #22d3ee; border: 1px solid rgba(6,182,212,0.3); margin-bottom: 10px; }
-  .meta { display: flex; gap: 16px; font-size: 0.8rem; color: #9a9aa5; margin-top: 10px; flex-wrap: wrap; }
-  .output { white-space: pre-wrap; line-height: 1.5; margin-top: 8px; }
+  .output-box { padding: 16px; background: #1c1c24; border-radius: 10px; border: 1px solid #33333d; }
+  .output { white-space: pre-wrap; line-height: 1.5; margin-top: 8px; font-size: 0.92rem; }
   .error { color: #f87171; }
 </style>
 </head>
 <body>
   <div class="card">
-    <h1>Hyper-Inference Router</h1>
-    <div class="subtitle">Cost-aware routing across AMD MI300X models via Fireworks AI — featuring Gemma 4 26B A4B IT</div>
+    <h1>Stop overpaying for AI. Start routing it.</h1>
+    <div class="subtitle">
+      Every prompt gets sent to the same expensive model, whether it needs it or not. Hyper-Inference Router
+      classifies each request and routes it to the cheapest model that can actually do the job —
+      using <strong>Gemma 4 26B A4B IT on AMD Instinct MI300X</strong> for the tasks that need real reasoning.
+    </div>
 
     <label for="taskHint">Task type</label>
     <select id="taskHint">
@@ -60,9 +99,45 @@
     <button id="submitBtn" onclick="route()">Route Request</button>
 
     <div class="result" id="result">
-      <div class="badge" id="modelBadge"></div>
-      <div class="output" id="output"></div>
-      <div class="meta" id="meta"></div>
+
+      <!-- The "Brain" Reveal -->
+      <div class="rationale" id="rationale" style="display:none;">
+        <span class="icon">🧠</span>
+        <span id="rationaleText"></span>
+      </div>
+
+      <!-- The Proof Dashboard -->
+      <div class="proof-dashboard" id="proofDashboard" style="display:none;">
+        <div class="stat-card">
+          <div class="stat-label">Latency</div>
+          <div class="stat-value" id="statLatency">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Cost</div>
+          <div class="stat-value" id="statCost">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Tokens</div>
+          <div class="stat-value" id="statTokens">—</div>
+        </div>
+      </div>
+
+      <!-- Savings Hero -->
+      <div class="savings-hero" id="savingsHero" style="display:none;">
+        <div class="savings-top">
+          <span class="savings-label">vs. equivalent GPT-4o cost</span>
+          <span class="savings-pct" id="savingsPct">0%</span>
+        </div>
+        <div class="savings-bar-track">
+          <div class="savings-bar-fill" id="savingsBar"></div>
+        </div>
+        <div class="savings-caption" id="savingsCaption"></div>
+      </div>
+
+      <div class="output-box">
+        <div class="badge" id="modelBadge"></div>
+        <div class="output" id="output"></div>
+      </div>
     </div>
   </div>
 
@@ -76,6 +151,10 @@ async function route() {
   btn.disabled = true;
   btn.textContent = 'Routing...';
   resultEl.classList.remove('show');
+  document.getElementById('rationale').style.display = 'none';
+  document.getElementById('proofDashboard').style.display = 'none';
+  document.getElementById('savingsHero').style.display = 'none';
+  document.getElementById('savingsBar').style.width = '0%';
 
   try {
     const res = await fetch('/api/route', {
@@ -88,15 +167,36 @@ async function route() {
     if (!res.ok) {
       document.getElementById('modelBadge').textContent = 'Error';
       document.getElementById('output').innerHTML = `<span class="error">${data.detail || 'Request failed'}</span>`;
-      document.getElementById('meta').textContent = '';
     } else {
       document.getElementById('modelBadge').textContent = data.model_display;
       document.getElementById('output').textContent = data.text;
-      const savingsText = data.savings_vs_gpt4_pct > 0
-        ? ` · ${data.savings_vs_gpt4_pct}% cheaper than GPT-4o`
-        : '';
-      document.getElementById('meta').textContent =
-        `Task: ${data.task_type} · Latency: ${data.latency_ms}ms · Tokens: ${data.tokens_used} · Cost: $${data.cost_usd}${savingsText}`;
+
+      // The "Brain" reveal - why this model was chosen
+      if (data.reason) {
+        document.getElementById('rationaleText').innerHTML =
+          `Task detected as <strong>${data.task_type}</strong>. Routed to <strong>${data.model_display}</strong> — ${data.reason}`;
+        document.getElementById('rationale').style.display = 'flex';
+      }
+
+      // The Proof Dashboard
+      document.getElementById('statLatency').textContent = `${data.latency_ms}ms`;
+      document.getElementById('statCost').textContent = `$${data.cost_usd}`;
+      document.getElementById('statTokens').textContent = data.tokens_used;
+      document.getElementById('proofDashboard').style.display = 'grid';
+
+      // The killer proof point - savings vs GPT-4o, front and center
+      if (data.savings_vs_gpt4_pct > 0) {
+        document.getElementById('savingsPct').textContent = `${data.savings_vs_gpt4_pct}% cheaper`;
+        document.getElementById('savingsCaption').textContent =
+          `This call: $${data.cost_usd} on Gemma 4 (AMD MI300X) vs. an estimated $${data.gpt4_equivalent_cost_usd} on GPT-4o for the same tokens.`;
+        document.getElementById('savingsHero').style.display = 'block';
+        // animate the bar in after paint
+        requestAnimationFrame(() => {
+          setTimeout(() => {
+            document.getElementById('savingsBar').style.width = `${Math.min(data.savings_vs_gpt4_pct, 100)}%`;
+          }, 50);
+        });
+      }
     }
     resultEl.classList.add('show');
   } catch (e) {
