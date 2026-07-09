@@ -84,27 +84,48 @@ MODEL_REGISTRY = {
     },
 }
 
+# Keywords are weighted: strong, unambiguous signals score higher than
+# generic terms that appear across multiple contexts (e.g. "api" alone is
+# too weak a signal for "code" -- it shows up constantly in business/
+# proposal prompts like "healthcare API project" that are really
+# reasoning tasks, not programming tasks).
 TASK_KEYWORDS = {
-    "casual": ["hello", "hi", "hey", "thanks", "thank you", "goodbye", "bye", "how are you"],
-    "code": ["code", "function", "api", "endpoint", "debug", "error", "script", "python", "javascript", "algorithm"],
-    "reasoning": ["proposal", "business plan", "strategy", "analyze", "evaluate", "recommend",
-                  "compare", "decision", "plan", "roadmap", "report", "budget"],
-    "creative": ["write", "caption", "post", "story", "blog", "marketing", "creative", "campaign", "copy"],
+    "casual": {
+        "hello": 2, "hi": 2, "hey": 2, "thanks": 2, "thank you": 2,
+        "goodbye": 2, "bye": 2, "how are you": 2,
+    },
+    "code": {
+        "function": 2, "debug": 2, "script": 2, "algorithm": 2,
+        "python": 2, "javascript": 2, "code snippet": 3, "stack trace": 3,
+        "refactor": 2, "unit test": 2, "endpoint": 1, "api": 1,
+    },
+    "reasoning": {
+        "proposal": 3, "business plan": 3, "strategy": 2, "analyze": 2,
+        "evaluate": 2, "recommend": 2, "compare": 2, "decision": 2,
+        "plan": 1, "roadmap": 2, "report": 2, "budget": 2, "bidding": 2,
+    },
+    "creative": {
+        "caption": 3, "post": 1, "story": 2, "blog": 2, "marketing": 3,
+        "campaign": 2, "copy": 1, "creative": 2,
+    },
 }
 
 
 def classify_task(prompt: str, hint: Optional[str] = None) -> str:
-    """Classify a prompt into casual | creative | reasoning | code via keyword match."""
+    """Classify a prompt into casual | creative | reasoning | code via
+    weighted keyword match. Strong, unambiguous keywords (e.g. "proposal",
+    "business plan") outweigh generic ones (e.g. "api") so common business
+    language doesn't get misrouted to the code path."""
     if hint and hint in MODEL_REGISTRY:
         return hint
     lower = prompt.lower()[:500]
     scores = {task: 0 for task in TASK_KEYWORDS}
     for task, keywords in TASK_KEYWORDS.items():
-        for kw in keywords:
+        for kw, weight in keywords.items():
             if kw in lower:
-                scores[task] += 1
+                scores[task] += weight
     best = max(scores, key=scores.get)
-    return best if scores[best] > 0 else "creative"
+    return best if scores[best] > 0 else "reasoning"
 
 
 def call_fireworks(prompt: str, task_type: str, system_prompt: str = "") -> dict:
