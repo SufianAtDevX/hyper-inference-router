@@ -234,6 +234,19 @@ def call_fireworks(prompt: str, task_type: str, system_prompt: str = "") -> dict
         "top_p": 0.9,
     }
 
+    # Gemma 4 E4B is a base (pre-trained) model, not instruction-tuned, and
+    # has no default chat template -- Fireworks rejects plain chat-format
+    # requests with an HTTP 400 unless we supply one explicitly. This is a
+    # minimal Gemma-style template (<start_of_turn>/<end_of_turn>) so the
+    # dedicated deployment can accept chat-style requests at all.
+    if GEMMA4_DEPLOYMENT_ID and model_id == GEMMA4_DEPLOYMENT_ID:
+        payload["chat_template"] = (
+            "{% for message in messages %}"
+            "{{ '<start_of_turn>' + (message['role'] if message['role'] != 'assistant' else 'model') + '\n' + message['content'] | trim + '<end_of_turn>\n' }}"
+            "{% endfor %}"
+            "{% if add_generation_prompt %}{{ '<start_of_turn>model\n' }}{% endif %}"
+        )
+
     t0 = time.time()
     try:
         resp = requests.post(
