@@ -67,6 +67,15 @@
   .savings-bar-fill { height: 100%; background: linear-gradient(90deg, #06b6d4, #34d399); border-radius: 999px;
     width: 0%; transition: width 0.7s ease-out; }
   .savings-hero .savings-caption { font-size: 0.72rem; color: #83838f; margin-top: 6px; }
+  .savings-hero .methodology { font-size: 0.68rem; color: #5f5f6b; margin-top: 4px; font-style: italic; }
+
+  .quick-chips { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  .chip {
+    margin: 0; width: auto; padding: 6px 12px; border-radius: 999px;
+    background: #1c1c24; border: 1px solid #33333d; color: #9a9aa5;
+    font-size: 0.75rem; font-weight: 500; cursor: pointer; transition: all 0.15s ease;
+  }
+  .chip:hover { border-color: rgba(6,182,212,0.4); color: #22d3ee; background: rgba(6,182,212,0.06); }
 
   .badge { display: inline-block; padding: 4px 10px; border-radius: 999px; font-size: 0.75rem;
     background: rgba(6,182,212,0.15); color: #22d3ee; border: 1px solid rgba(6,182,212,0.3); margin-bottom: 10px; }
@@ -81,7 +90,7 @@
     <div class="subtitle">
       Every prompt gets sent to the same expensive model, whether it needs it or not. Hyper-Inference Router
       classifies each request and routes it to the cheapest model that can actually do the job —
-      using <strong>Gemma 4 26B A4B IT on AMD Instinct MI300X</strong> for the tasks that need real reasoning.
+      using <strong>Gemma 4 E4B on AMD Instinct MI300X</strong> for the tasks that need real reasoning.
     </div>
 
     <label for="taskHint">Task type</label>
@@ -95,6 +104,12 @@
 
     <label for="prompt">Prompt</label>
     <textarea id="prompt" placeholder="e.g. Write a proposal for a full-stack developer role on a healthcare AI platform...">Write a short, professional freelance proposal for a Python developer role building a healthcare API platform with Flask and PostgreSQL.</textarea>
+
+    <div class="quick-chips">
+      <button type="button" class="chip" data-prompt="Hey, love the layout! Quick question: what are your weekend hours?">Casual greeting</button>
+      <button type="button" class="chip" data-prompt="Analyze the latency-to-cost trade-offs of hosting a 70B parameter model on a single dedicated AMD MI300X versus a serverless H100 cluster. Calculate rough operational margins.">Advanced reasoning</button>
+      <button type="button" class="chip" data-prompt="Refactor this Python block to avoid memory leaks during heavy concurrent API streaming connections, and write the custom async fallback middleware handler.">Code optimization</button>
+    </div>
 
     <button id="submitBtn" onclick="route()">Route Request</button>
 
@@ -132,6 +147,7 @@
           <div class="savings-bar-fill" id="savingsBar"></div>
         </div>
         <div class="savings-caption" id="savingsCaption"></div>
+        <div class="methodology">Calculated dynamically from this call's real token count at the routed model's rate vs. an equivalent GPT-4o rate — not a fixed or arbitrary figure.</div>
       </div>
 
       <div class="output-box">
@@ -142,6 +158,13 @@
   </div>
 
 <script>
+document.querySelectorAll('.chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.getElementById('prompt').value = chip.dataset.prompt;
+    document.getElementById('taskHint').value = ''; // let auto-detect classify it
+  });
+});
+
 async function route() {
   const btn = document.getElementById('submitBtn');
   const resultEl = document.getElementById('result');
@@ -187,8 +210,11 @@ async function route() {
       // The killer proof point - savings vs GPT-4o, front and center
       if (data.savings_vs_gpt4_pct > 0) {
         document.getElementById('savingsPct').textContent = `${data.savings_vs_gpt4_pct}% cheaper`;
+        // Bug fix: use the actual routed model name (data.model_display) instead
+        // of a hardcoded "Gemma 4" string, so this stays accurate for every
+        // task type (casual/code route to DeepSeek/Kimi, not Gemma 4).
         document.getElementById('savingsCaption').textContent =
-          `This call: $${data.cost_usd} on Gemma 4 (AMD MI300X) vs. an estimated $${data.gpt4_equivalent_cost_usd} on GPT-4o for the same tokens.`;
+          `This call: $${data.cost_usd} on ${data.model_display} vs. an estimated $${data.gpt4_equivalent_cost_usd} on GPT-4o for the same tokens.`;
         document.getElementById('savingsHero').style.display = 'block';
         // animate the bar in after paint
         requestAnimationFrame(() => {
