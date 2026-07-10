@@ -84,6 +84,15 @@ concept, not an exact per-token invoice line item. Latency and token
 counts shown are always real, measured values from the actual API
 response.
 
+**Note on the completions endpoint:** Gemma 4 E4B is a pre-trained base
+model, not instruction-tuned, and has no default chat template. The
+on-demand deployment also rejects client-supplied chat templates
+(`--trust-request-chat-template` isn't enabled), so `call_fireworks()`
+routes Gemma 4 requests through Fireworks' raw `/completions` endpoint
+instead of `/chat/completions`, wrapping the prompt in Gemma's own
+`<start_of_turn>`/`<end_of_turn>` markers manually. Serverless models
+(DeepSeek, Kimi) use the normal chat completions endpoint.
+
 ## Live proof, not a claim
 
 Every response returned by `/api/route` includes the actual model used, real
@@ -108,10 +117,13 @@ Client (browser demo UI or any HTTP client)
    MODEL_REGISTRY lookup
         |
         v
-   Fireworks AI Chat Completions API
+   Fireworks AI API
         |
-        +--> casual/code         -> serverless models (pay-per-token)
-        +--> creative/reasoning  -> Gemma 4 E4B (dedicated AMD MI300X deployment)
+        +--> casual/code         -> /chat/completions on serverless models (pay-per-token)
+        +--> creative/reasoning  -> /completions on Gemma 4 E4B (dedicated AMD MI300X deployment) --
+                                    Gemma 4 E4B is a base model with no default chat template, so
+                                    reasoning/creative requests use the raw completions endpoint with
+                                    the prompt manually wrapped in Gemma's turn markers instead.
 ```
 
 ## Running it
