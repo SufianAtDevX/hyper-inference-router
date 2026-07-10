@@ -115,8 +115,8 @@ STRONG_CREATIVE_PHRASES = [
     "write a song", "write a script for a video",
 ]
 STRONG_CASUAL_PHRASES = [
-    "hello", "hi there", "hey there", "thanks for", "thank you",
-    "goodbye", "how are you",
+    "hello", "hi there", "hey there", "hey,", "hey ", "thanks for", "thank you",
+    "goodbye", "how are you", "quick question", "love the",
 ]
 # Code intent requires an action verb NEAR a code noun -- "api" or
 # "platform" alone never qualifies, since those words appear constantly
@@ -148,7 +148,15 @@ def classify_task(prompt: str, hint: Optional[str] = None) -> str:
 
     lower = prompt.lower()[:500]
 
-    if any(p in lower for p in STRONG_CASUAL_PHRASES) and len(lower) < 60:
+    # Check casual phrases by POSITION, not total message length. A casual
+    # greeting phrase near the START of the message (e.g. "Hey, love the
+    # layout! Quick question: ...") is a reliable signal regardless of how
+    # long the rest of the message is. A total-length cap previously
+    # rejected legitimate longer greetings; checking only the opening
+    # ~40 chars avoids that while still not misfiring on a long reasoning
+    # prompt that happens to say "thank you" somewhere near the end.
+    lead = lower[:40]
+    if any(p in lead for p in STRONG_CASUAL_PHRASES):
         return "casual"
     if any(p in lower for p in STRONG_REASONING_PHRASES):
         return "reasoning"
