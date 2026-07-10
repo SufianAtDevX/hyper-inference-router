@@ -49,6 +49,12 @@ FW_KEY = os.getenv("FIREWORKS_API_KEY", "")
 # on-demand deployment in the Fireworks dashboard — see README).
 GEMMA4_DEPLOYMENT_ID = os.getenv("GEMMA4_DEPLOYMENT_ID", "")
 
+# MOCK MODE — for testing the routing/UI/stats workflow with ZERO Fireworks
+# API calls and zero cost. Never enable this for the real demo/recording,
+# since responses are fake placeholder text, not real model output.
+# Enable locally with: MOCK_MODE=true in your .env
+MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
+
 MODEL_REGISTRY = {
     "casual": {
         "id": "accounts/fireworks/models/deepseek-v4-flash",
@@ -168,10 +174,39 @@ def classify_task(prompt: str, hint: Optional[str] = None) -> str:
 
 def call_fireworks(prompt: str, task_type: str, system_prompt: str = "") -> dict:
     """Call Fireworks AI chat completions for the given task type."""
+    cfg = MODEL_REGISTRY.get(task_type, MODEL_REGISTRY["creative"])
+
+    if MOCK_MODE:
+        # Zero-cost fake response so the full routing/UI/stats pipeline
+        # can be tested end-to-end without spending any Fireworks credits.
+        time.sleep(0.6)  # simulate a bit of latency so the UI feels real
+        fake_text = (
+            f"[MOCK RESPONSE — no real API call made]\n\n"
+            f"This is a placeholder answer standing in for {cfg['display']}. "
+            f"In a real call, this space would contain the model's actual "
+            f"response to: \"{prompt[:120]}\""
+        )
+        fake_tokens = max(40, len(prompt.split()) * 3)
+        fake_cost = round(fake_tokens * cfg["cost_per_1k"] / 1000, 6)
+        fake_gpt4_cost = round(fake_tokens * 0.005 / 1000, 6)
+        fake_savings = round((1 - fake_cost / fake_gpt4_cost) * 100, 1) if fake_gpt4_cost > 0 else 0
+        return {
+            "text": fake_text,
+            "model": cfg["id"] or "mock-model-id",
+            "model_display": f"{cfg['display']} [MOCK]",
+            "task_type": task_type,
+            "reason": cfg["reason"],
+            "latency_ms": 600,
+            "tokens_used": fake_tokens,
+            "cost_usd": fake_cost,
+            "gpt4_equivalent_cost_usd": fake_gpt4_cost,
+            "savings_vs_gpt4_pct": fake_savings,
+            "error": None,
+        }
+
     if not FW_KEY:
         return {"text": None, "error": "FIREWORKS_API_KEY not set", "model": None}
 
-    cfg = MODEL_REGISTRY.get(task_type, MODEL_REGISTRY["creative"])
     model_id = cfg["id"]
 
     if not model_id:
@@ -272,6 +307,7 @@ app.add_middleware(
 def health():
     return {
         "status": "ok",
+        "mock_mode": MOCK_MODE,
         "fireworks_key_configured": bool(FW_KEY),
         "gemma4_deployment_configured": bool(GEMMA4_DEPLOYMENT_ID),
         "time": datetime.now(timezone.utc).isoformat(),
