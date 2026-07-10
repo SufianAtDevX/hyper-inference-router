@@ -221,36 +221,48 @@ def call_fireworks(prompt: str, task_type: str, system_prompt: str = "") -> dict
         return {"text": None, "error": f"No model configured for task '{task_type}' — "
                                         f"set GEMMA4_DEPLOYMENT_ID in .env", "model": None}
 
-    messages = []
-    if system_prompt:
-        messages.append({"role": "system", "content": system_prompt})
-    messages.append({"role": "user", "content": prompt})
+    # Gemma 4 E4B is a base (pre-trained) model, not instruction-tuned. It
+    # has no default chat template, and the deployment rejects any request
+    # that supplies one client-side (server requires --trust-request-
+    # chat-template, which isn't set on our on-demand deployment). So for
+    # this specific model we use the raw /completions endpoint with the
+    # prompt manually wrapped in Gemma's turn markers, instead of /chat/
+    # completions -- this sidesteps the chat-template requirement entirely.
+    use_raw_completions = bool(GEMMA4_DEPLOYMENT_ID) and model_id == GEMMA4_DEPLOYMENT_ID
 
-    payload = {
-        "model": model_id,
-        "messages": messages,
-        "max_tokens": cfg["max_tokens"],
-        "temperature": cfg["temperature"],
-        "top_p": 0.9,
-    }
+    if use_raw_completions:
+        full_prompt = ""
+        if system_prompt:
+            full_prompt += f"<start_of_turn>user\n{system_prompt}\n\n{prompt}<end_of_turn>\n<start_of_turn>model\n"
+        else:
+            full_prompt += f"<start_of_turn>user\n{prompt}<end_of_turn>\n<start_of_turn>model\n"
+        payload = {
+            "model": model_id,
+            "prompt": full_prompt,
+            "max_tokens": cfg["max_tokens"],
+            "temperature": cfg["temperature"],
+            "top_p": 0.9,
+            "stop": ["<end_of_turn>"],
+        }
+    else:
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        payload = {
+            "model": model_id,
+            "messages": messages,
+            "max_tokens": cfg["max_tokens"],
+            "temperature": cfg["temperature"],
+            "top_p": 0.9,
+        }
 
-    # Gemma 4 E4B is a base (pre-trained) model, not instruction-tuned, and
-    # has no default chat template -- Fireworks rejects plain chat-format
-    # requests with an HTTP 400 unless we supply one explicitly. This is a
-    # minimal Gemma-style template (<start_of_turn>/<end_of_turn>) so the
-    # dedicated deployment can accept chat-style requests at all.
-    if GEMMA4_DEPLOYMENT_ID and model_id == GEMMA4_DEPLOYMENT_ID:
-        payload["chat_template"] = (
-            "{% for message in messages %}"
-            "{{ '<start_of_turn>' + (message['role'] if message['role'] != 'assistant' else 'model') + '\n' + message['content'] | trim + '<end_of_turn>\n' }}"
-            "{% endfor %}"
-            "{% if add_generation_prompt %}{{ '<start_of_turn>model\n' }}{% endif %}"
-        )
+    endpoint = f"{FW_BASE}/completions" if use_raw_completions else f"{FW_BASE}/chat/completions"
 
     t0 = time.time()
     try:
         resp = requests.post(
-            f"{FW_BASE}/chat/completions",
+            endpoint,
             headers={"Authorization": f"Bearer {FW_KEY}", "Content-Type": "application/json"},
             json=payload,
             timeout=60,
@@ -263,7 +275,10 @@ def call_fireworks(prompt: str, task_type: str, system_prompt: str = "") -> dict
                     "model": model_id, "latency_ms": latency_ms}
 
         data = resp.json()
-        text = data["choices"][0]["message"]["content"].strip()
+        if use_raw_completions:
+            text = data["choices"][0]["text"].strip()
+        else:
+            text = data["choices"][0]["message"]["content"].strip()
         usage = data.get("usage", {})
         tokens_used = usage.get("total_tokens", 0)
         cost_usd = round(tokens_used * cfg["cost_per_1k"] / 1000, 6)
