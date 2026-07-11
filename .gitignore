@@ -5,3 +5,7 @@ __pycache__/
 venv/
 *.log
 .DS_Store
+
+# Raw demo video is on YouTube; too large for git (100MB+), no need to duplicate it here
+DEMO/*.mp4
+DEMO/**/*.mp4

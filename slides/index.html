@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Hyper-Inference Router — Slide Deck</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, Segoe UI, Roboto, sans-serif;
+    background: #0a0a0c; color: #e5e5e8;
+  }
+  .slide {
+    width: 1280px; height: 720px; margin: 40px auto;
+    background: #14141a; border: 1px solid #26262e; border-radius: 16px;
+    padding: 64px; position: relative; overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  @page {
+    size: 1280px 720px;
+    margin: 0;
+  }
+  .slide-number { position: absolute; bottom: 24px; right: 32px; font-size: 0.8rem; color: #5f5f6b; }
+  .kicker { font-size: 0.85rem; color: #22d3ee; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; margin-bottom: 16px; }
+  h1 { font-size: 2.6rem; font-weight: 800; line-height: 1.2; margin-bottom: 20px; }
+  h2 { font-size: 1.9rem; font-weight: 700; margin-bottom: 28px; }
+  p.lede { font-size: 1.25rem; color: #b5b5bd; line-height: 1.6; max-width: 900px; }
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-top: 32px; }
+  .grid2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; margin-top: 24px; }
+  .card {
+    background: #1c1c24; border: 1px solid #33333d; border-radius: 12px; padding: 24px;
+  }
+  .card .card-label { font-size: 0.75rem; color: #83838f; text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 10px; }
+  .card .card-title { font-size: 1.15rem; font-weight: 700; margin-bottom: 8px; }
+  .card .card-body { font-size: 0.95rem; color: #b5b5bd; line-height: 1.5; }
+  .stat-hero { font-size: 4rem; font-weight: 800; color: #34d399; line-height: 1; }
+  .stat-label { font-size: 1rem; color: #9a9aa5; margin-top: 8px; }
+  .row { display: flex; gap: 40px; align-items: center; flex: 1; }
+  .col { flex: 1; }
+  img.shot { width: 100%; border-radius: 10px; border: 1px solid #33333d; }
+  .badge { display: inline-block; padding: 6px 14px; border-radius: 999px; font-size: 0.85rem;
+    background: rgba(6,182,212,0.15); color: #22d3ee; border: 1px solid rgba(6,182,212,0.3); }
+  .flow { display: flex; align-items: center; justify-content: center; gap: 16px; margin-top: 40px; flex-wrap: wrap; }
+  .flow-box { background: #1c1c24; border: 1px solid #33333d; border-radius: 10px; padding: 16px 24px; font-weight: 600; text-align: center; }
+  .flow-arrow { color: #5f5f6b; font-size: 1.5rem; }
+  .flow-box.highlight { border-color: rgba(6,182,212,0.5); color: #22d3ee; }
+  table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+  th, td { text-align: left; padding: 12px 16px; border-bottom: 1px solid #26262e; font-size: 0.95rem; }
+  th { color: #83838f; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.04em; }
+  td.highlight { color: #34d399; font-weight: 700; }
+  ul.check-list { list-style: none; margin-top: 20px; }
+  ul.check-list li { padding: 8px 0; font-size: 1.05rem; color: #cfcfd6; }
+  ul.check-list li::before { content: "✓ "; color: #34d399; font-weight: 800; }
+  .footer-tag { font-size: 0.9rem; color: #5f5f6b; margin-top: auto; padding-top: 24px; }
+  @media print {
+    html, body { background: #0a0a0c; margin: 0; padding: 0; }
+    .slide {
+      margin: 0; border-radius: 0; border: none;
+      page-break-after: always; box-shadow: none;
+      width: 1280px; height: 720px;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- SLIDE 1: TITLE -->
+<div class="slide">
+  <div class="kicker">AMD Developer Hackathon: ACT II — Track 3 (Unicorn Track)</div>
+  <h1>Hyper-Inference Router</h1>
+  <p class="lede">Stop overpaying for AI. Route every request to the cheapest model that can actually do the job — using Gemma 4 E4B on a dedicated AMD Instinct MI300X deployment for the tasks that need real reasoning.</p>
+  <div style="margin-top: 48px;">
+    <span class="badge">FastAPI</span>&nbsp;
+    <span class="badge">Docker</span>&nbsp;
+    <span class="badge">Fireworks AI</span>&nbsp;
+    <span class="badge">Gemma 4 · Google DeepMind</span>&nbsp;
+    <span class="badge">AMD Instinct MI300X</span>
+  </div>
+  <div class="footer-tag">Live demo: hyper-inference-router-1.onrender.com &nbsp;·&nbsp; github.com/SufianAtDevX/hyper-inference-router</div>
+  <div class="slide-number">1</div>
+</div>
+
+<!-- SLIDE 2: THE PROBLEM -->
+<div class="slide">
+  <div class="kicker">The Problem</div>
+  <h2>Every AI product makes the same expensive mistake</h2>
+  <p class="lede">Most products pick one model and use it for every request — regardless of what that request actually needs.</p>
+  <div class="grid3">
+    <div class="card">
+      <div class="card-label">Simple request</div>
+      <div class="card-title">"Thanks for reaching out!"</div>
+      <div class="card-body">Sent to a frontier model. Massive overkill — and you pay frontier-model prices for a one-line reply.</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Complex request</div>
+      <div class="card-title">"Write a winning client proposal"</div>
+      <div class="card-body">Sent to the same model as above, or worse — a cheap model that can't deliver the reasoning quality this actually needs.</div>
+    </div>
+    <div class="card">
+      <div class="card-label">The result</div>
+      <div class="card-title">Wasted spend, every call</div>
+      <div class="card-body">No routing logic means no way to match cost to actual task complexity — at scale, this adds up fast.</div>
+    </div>
+  </div>
+  <div class="slide-number">2</div>
+</div>
+
+<!-- SLIDE 3: THE SOLUTION -->
+<div class="slide">
+  <div class="kicker">The Solution</div>
+  <h2>Route, don't pick</h2>
+  <p class="lede">Hyper-Inference Router classifies every prompt and sends it to the model actually suited to the job.</p>
+  <div class="flow">
+    <div class="flow-box">Incoming Prompt</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box highlight">classify_task()</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">Right Model</div>
+  </div>
+  <table>
+    <tr><th>Task Type</th><th>Routed To</th><th>Why</th></tr>
+    <tr><td>Casual</td><td>DeepSeek V4 Flash <em>(serverless)</em></td><td>Ultra-low latency, near-zero cost</td></tr>
+    <tr><td>Reasoning / Creative</td><td class="highlight">Gemma 4 E4B <em>(dedicated, AMD MI300X)</em></td><td>Real reasoning quality when it matters</td></tr>
+    <tr><td>Code</td><td>Kimi K2 Code <em>(serverless)</em></td><td>Code-specialized model for technical tasks</td></tr>
+  </table>
+  <div class="footer-tag">Classification itself is a zero-cost weighted keyword match — no extra LLM call spent just deciding where to route.</div>
+  <div class="slide-number">3</div>
+</div>
+
+<!-- SLIDE 4: LIVE PROOF -->
+<div class="slide">
+  <div class="kicker">Live Proof, Not a Slide Claim</div>
+  <h2>Real numbers, from real calls</h2>
+  <div class="grid3">
+    <div class="card">
+      <div class="card-label">Casual → DeepSeek V4 Flash</div>
+      <div class="stat-hero">98%</div>
+      <div class="stat-label">cheaper than GPT-4o</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Reasoning → Gemma 4 E4B</div>
+      <div class="stat-hero">95%</div>
+      <div class="stat-label">cheaper than GPT-4o</div>
+    </div>
+    <div class="card">
+      <div class="card-label">Code → Kimi K2 Code</div>
+      <div class="stat-hero">82%</div>
+      <div class="stat-label">cheaper than GPT-4o</div>
+    </div>
+  </div>
+  <div class="footer-tag">Every response includes the actual model used, real latency, real token count, and a live cost comparison — computed from that exact call, not asserted.</div>
+  <div class="slide-number">4</div>
+</div>
+
+<!-- SLIDE 5: ARCHITECTURE -->
+<div class="slide">
+  <div class="kicker">Architecture</div>
+  <h2>Simple, auditable, zero routing overhead</h2>
+  <div class="flow" style="flex-direction: column; align-items: stretch; margin-top: 24px;">
+    <div style="display:flex; justify-content:center; margin-bottom: 16px;"><div class="flow-box">Client (Demo UI / HTTP)</div></div>
+    <div style="text-align:center; color:#5f5f6b; font-size:1.5rem;">↓</div>
+    <div style="display:flex; justify-content:center; margin: 16px 0;"><div class="flow-box">FastAPI App (app.py)</div></div>
+    <div style="text-align:center; color:#5f5f6b; font-size:1.5rem;">↓</div>
+    <div style="display:flex; justify-content:center; margin: 16px 0;"><div class="flow-box highlight">classify_task() — weighted keyword match</div></div>
+    <div style="text-align:center; color:#5f5f6b; font-size:1.5rem;">↓</div>
+    <div style="display:flex; justify-content:center; gap: 24px; margin-top: 16px;">
+      <div class="flow-box">casual / code<br><small style="color:#83838f;">/chat/completions · serverless</small></div>
+      <div class="flow-box highlight">creative / reasoning<br><small>/completions · Gemma 4 E4B · dedicated AMD MI300X</small></div>
+    </div>
+  </div>
+  <div class="slide-number">5</div>
+</div>
+
+<!-- SLIDE 6: PRODUCTION CONTEXT -->
+<div class="slide">
+  <div class="kicker">Not a Hackathon-Only Prototype</div>
+  <h2>This exact routing pattern runs in production</h2>
+  <div class="row">
+    <div class="col">
+      <p class="lede" style="font-size: 1.1rem;">This routing logic was built for and is used inside <strong style="color:#22d3ee;">Kronos AI</strong> — a live SaaS platform for freelancers and agencies generating job proposals, social content, and business documents on demand.</p>
+      <ul class="check-list">
+        <li>Real paying users, real AI calls, every day</li>
+        <li>Proposals and social captions have wildly different reasoning needs</li>
+        <li>This submission is a clean, standalone extraction — no Kronos business logic or proprietary code included</li>
+      </ul>
+    </div>
+    <div class="col">
+      <img class="shot" src="kronos-dashboard.png.png" alt="Kronos AI Dashboard" />
+    </div>
+  </div>
+  <div class="footer-tag">kronos.devxhouse.com — AI Receptionist, Social Media Hub, Proposal Intelligence, and Doc Studio, all in production today.</div>
+  <div class="slide-number">6</div>
+</div>
+
+<!-- SLIDE 7: DEMO SCREENSHOT -->
+<div class="slide">
+  <div class="kicker">The Demo</div>
+  <h2>Try it yourself — live right now</h2>
+  <div class="row">
+    <div class="col" style="flex: 1.3;">
+      <img class="shot" src="demo-screenshot.png.png" alt="Hyper-Inference Router demo" />
+    </div>
+    <div class="col">
+      <ul class="check-list">
+        <li>One click, three quick-test prompts</li>
+        <li>Transparent "Route Rationale" — no black box</li>
+        <li>Live cost, latency, and token stats on every call</li>
+        <li>Savings vs. GPT-4o calculated dynamically, not hardcoded</li>
+      </ul>
+    </div>
+  </div>
+  <div class="footer-tag">hyper-inference-router-1.onrender.com</div>
+  <div class="slide-number">7</div>
+</div>
+
+<!-- SLIDE 8: CLOSE -->
+<div class="slide">
+  <div class="kicker">Hyper-Inference Router</div>
+  <h1>Smarter routing. Real savings.<br>Running live, on AMD MI300X.</h1>
+  <p class="lede">Built for the AMD Developer Hackathon: ACT II — Track 3 (Unicorn Track). Targeting Best Use of Gemma via Fireworks and Best AMD-Hosted Gemma Project.</p>
+  <div style="margin-top: 40px;">
+    <p style="font-size: 1.1rem; color: #cfcfd6;">Live demo: <strong style="color:#22d3ee;">hyper-inference-router-1.onrender.com</strong></p>
+    <p style="font-size: 1.1rem; color: #cfcfd6; margin-top: 8px;">GitHub: <strong style="color:#22d3ee;">github.com/SufianAtDevX/hyper-inference-router</strong></p>
+    <p style="font-size: 1.1rem; color: #cfcfd6; margin-top: 8px;">Production reference: <strong style="color:#22d3ee;">kronos.devxhouse.com</strong></p>
+  </div>
+  <div class="slide-number">8</div>
+</div>
+
+</body>
+</html>
