@@ -2,6 +2,7 @@
 
 **AMD Developer Hackathon: ACT II — Track 3 (Unicorn Track)**
 **Live demo:** [hyper-inference-router-1.onrender.com](https://hyper-inference-router-1.onrender.com)
+**Demo video:** [youtu.be/6fgzcTlMbV8](https://youtu.be/6fgzcTlMbV8)
 **Bonus tracks targeted:** Best Use of Gemma via Fireworks · Best AMD-Hosted Gemma Project
 
 ---

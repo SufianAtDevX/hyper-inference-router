@@ -72,3 +72,9 @@ https://hyper-inference-router-1.onrender.com
 ## GitHub Repository
 
 https://github.com/SufianAtDevX/hyper-inference-router
+
+## Demo Video
+
+https://youtu.be/6fgzcTlMbV8
+
+(Also referenced in README.md so it's visible to anyone browsing the repo directly, not just on the lablab.ai submission page.)
